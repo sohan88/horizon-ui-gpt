@@ -1,19 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import axios from "axios";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { FaPaperPlane } from "react-icons/fa";
+import './globals.css';
 
 export default function Home() {
     const [messages, setMessages] = useState<{ role: string; text: string }[]>([]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
 
+    const CodeBlock = ({ language, value }) => (
+        <SyntaxHighlighter language={language} style={vscDarkPlus}>
+            {value}
+        </SyntaxHighlighter>
+    );
+
     const sendMessage = async () => {
-        if ( !input.trim() ) return;
+        if (!input.trim()) return;
 
         const newMessages = [...messages, { role: "user", text: input }];
         setMessages(newMessages);
@@ -27,29 +33,27 @@ export default function Home() {
                 body: JSON.stringify({ Message: input }),
             });
 
-            if ( !response.body ) {
+            if (!response.body) {
                 throw new Error("ReadableStream not supported in this browser.");
             }
 
             const reader = response.body.getReader();
             let done = false;
             let assistantMessage = "";
-            while ( !done ) {
+            while (!done) {
                 const { value, done: doneReading } = await reader.read();
                 done = doneReading;
                 const chunk = new TextDecoder("utf-8").decode(value);
                 assistantMessage += chunk;
-                // Optionally, update the assistant message incrementally:
                 setMessages([...newMessages, { role: "assistant", text: assistantMessage }]);
             }
-        } catch ( error ) {
+        } catch (error) {
             console.error("Error fetching response:", error);
         } finally {
             setLoading(false);
         }
     };
 
-    // Inline styles for the text input container (unchanged)
     const inputStyles = {
         input: {
             flex: 1,
@@ -90,99 +94,125 @@ export default function Home() {
     };
 
     return (
-        // Outer container with dark orange background
-        <div className="min-h-screen bg-orange-900 flex items-center justify-center p-4">
-            {/* Centered container for the chat UI */}
-            <div className="w-full max-w-2xl bg-gray-800 rounded-lg shadow-xl overflow-hidden">
-                {/* Chat messages container with forced scrollbar */}
-                <div className="h-[60vh] overflow-y-scroll p-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-500 scrollbar-track-gray-700">
-                    {messages.map((m, index) => (
-                        <div key={index} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                            <div className={`flex max-w-[80%] ${m.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
-                                <div
-                                    className={`p-4 rounded-xl ${
-                                        m.role === "user"
-                                            ? "bg-purple-500 text-yellow-300" // "You" messages styling
-                                            : "bg-teal-600 text-black"         // "Horizon" messages styling
-                                    }`}
-                                >
-                                    {/* Inline label and message */}
-                                    <div className="flex items-center">
-                    <span className={`font-bold mr-2 ${m.role === "user" ? "text-pink-300" : "text-green-300"}`}>
-                      {m.role === "user" ? "You:" : "Horizon:"}
-                    </span>
-                                        <ReactMarkdown
-                                            components={{
-                                                code({ node, inline, className, children, ...props }) {
-                                                    const match = /language-(\w+)/.exec(className || "");
-                                                    return !inline && match ? (
-                                                        <SyntaxHighlighter
-                                                            language={match[1]}
-                                                            style={vscDarkPlus}
-                                                            PreTag="div"
-                                                            className="rounded-md mt-2"
-                                                            {...props}
-                                                        >
-                                                            {String(children).replace(/\n$/, "")}
-                                                        </SyntaxHighlighter>
-                                                    ) : (
-                                                        <code className={`${className} bg-black/20 px-1 rounded`} {...props}>
-                                                            {children}
-                                                        </code>
-                                                    );
-                                                },
-                                                p: ({ children }) => <span className="text-current">{children}</span>,
-                                            }}
-                                        >
-                                            {m.text}
-                                        </ReactMarkdown>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                    {loading && (
-                        <div className="flex justify-start">
-                            <div className="p-4 rounded-xl bg-gray-700 text-white animate-pulse">
-                                <div className="flex items-center">
-                                    <span className="font-bold mr-2">Horizon:</span>
-                                    <div className="flex items-center space-x-2">
-                                        <div className="w-3 h-3 bg-white rounded-full animate-bounce"></div>
-                                        <div className="w-3 h-3 bg-white rounded-full animate-bounce delay-200"></div>
-                                        <div className="w-3 h-3 bg-white rounded-full animate-bounce delay-400"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
+        <div className="w-full bg-gray-800 rounded-lg shadow-xl overflow-hidden">
+            {/* Header */}
+            <div className="bg-black p-4">
+                <h1 className="text-2xl font-bold italic text-white text-center">Welcome to Horizon! What can I help with?</h1>
+            </div>
 
-                {/* Input container (unchanged styling) */}
-                <div style={inputStyles.container}>
-                    <div style={inputStyles.innerContainer}>
-            <textarea
-                style={inputStyles.input}
-                rows={1}
-                placeholder="Send a message..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        sendMessage();
-                    }
-                }}
-            />
-                        <button
-                            onClick={sendMessage}
-                            style={inputStyles.button}
-                            disabled={loading || !input.trim()}
-                        >
-                            <FaPaperPlane className="w-5 h-5" />
-                        </button>
+            {/* Chat messages container */}
+            <div className="h-[100vh] overflow-y-scroll p-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-500 scrollbar-track-gray-700">
+                {messages.map((m, index) => (
+                    <div key={index} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                        <div className={`flex max-w-[80%] ${m.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
+                            <div
+                                className={`p-4 rounded-xl ${
+                                    m.role === "user"
+                                        ? "bg-purple-600 text-white shadow-lg" // User message styling
+                                        : "bg-teal-600 text-white shadow-lg"  // Horizon message styling
+                                }`}
+                            >
+                                <div className="flex items-center">
+                                    <span className={`font-bold mr-2 ${m.role === "user" ? "text-pink-300" : "text-green-300"}`}>
+                                        {m.role === "user" ? "You:" : "Horizon:"}
+                                    </span>
+                                    <ReactMarkdown
+                                        components={{
+                                            code({ node, inline, className, children, ...props }) {
+                                                const match = /language-(\w+)/.exec(className || "");
+                                                return !inline && match ? (
+                                                    <SyntaxHighlighter
+                                                        language={match[1]}
+                                                        style={vscDarkPlus}
+                                                        PreTag="div"
+                                                        className="rounded-md mt-2"
+                                                        {...props}
+                                                    >
+                                                        {String(children).replace(/\n$/, "")}
+                                                    </SyntaxHighlighter>
+                                                ) : (
+                                                    <code className={`${className} bg-black/20 px-1 rounded`} {...props}>
+                                                        {children}
+                                                    </code>
+                                                );
+                                            },
+                                            p: ({ children }) => <span className="text-current">{children}</span>,
+                                        }}
+                                    >
+                                        {m.text}
+                                    </ReactMarkdown>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+                ))}
+
+                {/* Loading state with blinking dots */}
+                {loading && (
+                    <div className="flex justify-start">
+                        <div className="p-4 rounded-xl bg-gray-700 text-white">
+                            <div className="flex items-center">
+                                <span className="font-bold mr-2">Horizon:</span>
+                                <div className="blinking-dots">
+                                    <span>.</span>
+                                    <span>.</span>
+                                    <span>.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Input container */}
+            <div style={inputStyles.container}>
+                <div style={inputStyles.innerContainer}>
+                    <textarea
+                        style={inputStyles.input}
+                        rows={1}
+                        placeholder="Send a message..."
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyPress={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                sendMessage();
+                            }
+                        }}
+                    />
+                    <button
+                        onClick={sendMessage}
+                        style={inputStyles.button}
+                        disabled={loading || !input.trim()}
+                    >
+                        <FaPaperPlane className="w-5 h-8" />
+                    </button>
                 </div>
             </div>
+
+            {/* Add the <style jsx> block here */}
+            <style jsx>{`
+                @keyframes blink {
+                    0%, 100% {
+                        opacity: 1;
+                    }
+                    50% {
+                        opacity: 0;
+                    }
+                }
+
+                .blinking-dots span {
+                    animation: blink 1.4s infinite;
+                }
+
+                .blinking-dots span:nth-child(2) {
+                    animation-delay: 0.2s;
+                }
+
+                .blinking-dots span:nth-child(3) {
+                    animation-delay: 0.4s;
+                }
+            `}</style>
         </div>
     );
 }
